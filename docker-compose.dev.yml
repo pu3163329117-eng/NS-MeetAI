@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  # 前端开发服务（热重载）
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: ns-meetai-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - ns-meetai-network
+    command: npm run dev
+    stdin_open: true
+    tty: true
+
+  # 后端开发服务（热重载）
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: ns-meetai-backend-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - CORS_ORIGIN=http://localhost:5173
+      - DATABASE_URL=postgresql://postgres:password@db:5432/ns_meetai
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-dummy-key-for-dev}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    networks:
+      - ns-meetai-network
+    command: npm run dev
+    depends_on:
+      - db
+      - redis
+    stdin_open: true
+    tty: true
+
+  # AI处理器开发服务
+  ai-processor:
+    build:
+      context: ./ai-processor
+      dockerfile: Dockerfile.dev
+    container_name: ns-meetai-ai-processor-dev
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-dummy-key-for-dev}
+      - OPENAI_MODEL=gpt-4-turbo-preview
+    volumes:
+      - ./ai-processor:/app
+      - /app/node_modules
+      - ./uploads:/app/uploads
+      - ./ai-logs:/app/logs
+    networks:
+      - ns-meetai-network
+    command: npm run dev
+    depends_on:
+      - backend
+    stdin_open: true
+    tty: true
+
+  # 数据库服务
+  db:
+    image: postgres:15-alpine
+    container_name: ns-meetai-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ns_meetai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - ns-meetai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: ns-meetai-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - ns-meetai-network
+    command: redis-server --appendonly yes
+    volumes:
+      - ./redis-data:/data
+
+  # 数据库管理界面
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: ns-meetai-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@ns-meetai.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    networks:
+      - ns-meetai-network
+    depends_on:
+      - db
+
+  # Redis管理界面
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: ns-meetai-redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - ns-meetai-network
+    depends_on:
+      - redis
+
+networks:
+  ns-meetai-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  uploads:
+  logs:
+  ai-logs:
