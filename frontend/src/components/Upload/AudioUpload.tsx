@@ -1,7 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FiUpload, FiFile, FiCheck, FiX, FiMusic } from 'react-icons/fi';
-import { AudioFile } from '@/types';
+import { FiUpload, FiCheck, FiX, FiMusic } from 'react-icons/fi';
 
 interface AudioUploadProps {
   onFileUpload: (file: File) => Promise<void>;

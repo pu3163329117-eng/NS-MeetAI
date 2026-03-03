@@ -140,7 +140,7 @@ const Home: React.FC = () => {
           </p>
           <div className="mt-8">
             <button
-              onClick={() => document.querySelector('input[type="file"]')?.click()}
+              onClick={() => (document.querySelector('input[type="file"]') as HTMLInputElement)?.click()}
               className="btn-primary px-8 py-3 text-lg"
             >
               开始免费体验
